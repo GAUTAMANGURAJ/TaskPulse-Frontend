@@ -1,0 +1,84 @@
+# ============================================================================
+# TaskPulse Enterprise - .gitignore
+# ============================================================================
+
+# 1. Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# 2. Environment Variables & Secrets (CRITICAL)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+*.pem
+*.key
+*.cert
+# Allow template/example files to be tracked
+!.env.example
+
+# 3. Production Builds & Bundler Caches
+dist/
+dist-ssr/
+build/
+out/
+.vite/
+.cache/
+.turbo/
+*.tsbuildinfo
+
+# 4. Logs & Debug Artifacts
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# 5. Operating System Files (macOS, Windows, Linux)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# 6. IDE & Editor Directories
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.sublime-*
+
+# 7. Testing & Coverage Reports
+coverage/
+*.lcov
+.nyc_output/
+reports/
+
+# 8. Local Agent & OrchestrAI Workspaces
+.orchestai/
+.cursor/
+.gemini/
+.tanstack/
+skills/
+
+
+# 9. Temporary & Backup Files
+.tmp/
+.temp/
+*.tmp
+*.temp
+*.bak
+*~
