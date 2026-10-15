@@ -15,7 +15,7 @@ export const todoSchema = z.object({
     .nullable()
     .optional()
     .or(z.literal('')),
-  is_complete: z.boolean().default(false),
+  is_complete: z.boolean(),
 });
 
 export type TodoFormData = z.infer<typeof todoSchema>;

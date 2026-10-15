@@ -1,7 +1,8 @@
 import React from 'react';
 import { Card } from 'antd';
+import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 
-interface CustomStatCardProps {
+export interface CustomStatCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
@@ -12,6 +13,7 @@ interface CustomStatCardProps {
     value: string;
     isPositive: boolean;
   };
+  className?: string;
 }
 
 export const CustomStatCard: React.FC<CustomStatCardProps> = ({
@@ -19,44 +21,53 @@ export const CustomStatCard: React.FC<CustomStatCardProps> = ({
   value,
   subtitle,
   icon,
-  iconBgColor = 'bg-indigo-50 dark:bg-indigo-950/40',
-  iconColor = 'text-indigo-600 dark:text-indigo-400',
+  iconBgColor = 'surface-subtle',
+  iconColor = 'text-theme-accent',
   trend,
+  className = '',
 }) => {
   return (
     <Card
       variant="borderless"
-      className="shadow-sm hover:shadow-md transition-all duration-300 border border-slate-200/80 dark:border-slate-800"
-      styles={{ body: { padding: '20px 24px' } }}
+      className={`card-enterprise subtle-lift relative overflow-hidden group ${className}`}
+      styles={{ body: { padding: '16px 18px' } }}
     >
+      {/* Top subtle gradient highlight on hover */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-[var(--primary-glow)] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <p className="text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">
+          <p className="text-[11px] uppercase tracking-wider font-bold text-theme-muted m-0">
             {title}
           </p>
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+          <div
+            className="text-lg sm:text-xl font-bold tracking-tight text-theme-title"
+          >
             {value}
-          </h3>
+          </div>
           {subtitle && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+            <p className="text-xs text-theme-body font-medium m-0">
               {subtitle}
             </p>
           )}
           {trend && (
-            <div className="flex items-center gap-1 mt-1">
+            <div className="flex items-center gap-1.5 pt-0.5">
               <span
-                className={`text-xs font-semibold ${
-                  trend.isPositive ? 'text-emerald-600' : 'text-rose-600'
+                className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10.5px] font-bold ${
+                  trend.isPositive
+                    ? 'badge-pill-success'
+                    : 'badge-pill-danger'
                 }`}
               >
-                {trend.isPositive ? '↑' : '↓'} {trend.value}
+                {trend.isPositive ? <ArrowUpOutlined className="text-[9px]" /> : <ArrowDownOutlined className="text-[9px]" />}
+                {trend.value}
               </span>
-              <span className="text-[11px] text-slate-400">vs last period</span>
+              <span className="text-[10.5px] text-theme-muted">vs prev</span>
             </div>
           )}
         </div>
         <div
-          className={`w-12 h-12 rounded-xl flex items-center justify-center ${iconBgColor} ${iconColor} text-xl shadow-xs`}
+          className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBgColor} ${iconColor} text-lg shadow-xs transition-transform duration-300 group-hover:scale-105`}
         >
           {icon}
         </div>

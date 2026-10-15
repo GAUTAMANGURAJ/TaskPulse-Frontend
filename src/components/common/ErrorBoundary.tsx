@@ -31,12 +31,12 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-950">
+        <div className="min-h-screen flex items-center justify-center p-6 bg-[var(--bg-canvas)]">
           <Result
             status="500"
-            title={<span className="text-2xl font-bold">Unexpected Application Error</span>}
+            title={<span className="text-2xl font-bold text-theme-title">Unexpected Application Error</span>}
             subTitle={
-              <span className="text-slate-500 text-sm max-w-md block">
+              <span className="text-theme-muted text-sm max-w-md block">
                 {this.state.error?.message ||
                   'An unexpected system exception occurred. The incident has been recorded in the application console.'}
               </span>
@@ -46,7 +46,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 type="primary"
                 icon={<ReloadOutlined />}
                 onClick={this.handleReload}
-                className="bg-indigo-600 hover:bg-indigo-700 font-semibold"
+                className="btn-primary font-semibold"
               >
                 Reload Application
               </Button>

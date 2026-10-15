@@ -1,77 +1,69 @@
 import React from 'react';
-import { Tag } from 'antd';
 import {
-  CheckCircleOutlined,
-  ClockCircleOutlined,
+  CheckCircleFilled,
+  ClockCircleFilled,
   UserOutlined,
-  CrownOutlined,
-  StopOutlined,
+  CrownFilled,
+  StopFilled,
 } from '@ant-design/icons';
+import { useI18n } from '../../i18n/I18nContext';
 
-interface CustomStatusBadgeProps {
+export interface CustomStatusBadgeProps {
   type: 'todo_status' | 'user_status' | 'user_role';
   value: boolean;
   text?: string;
+  className?: string;
 }
 
-export const CustomStatusBadge: React.FC<CustomStatusBadgeProps> = ({ type, value, text }) => {
+export const CustomStatusBadge: React.FC<CustomStatusBadgeProps> = ({
+  type,
+  value,
+  text,
+  className = '',
+}) => {
+  const { t } = useI18n();
+
   if (type === 'todo_status') {
     return value ? (
-      <Tag
-        icon={<CheckCircleOutlined />}
-        color="success"
-        className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
-      >
-        {text || 'Completed'}
-      </Tag>
+      <span className={`badge-pill badge-pill-success ${className}`}>
+        <span className="w-1.5 h-1.5 rounded-full dot animate-pulse-dot" />
+        <CheckCircleFilled className="text-[11px]" />
+        <span>{text || t('tasks.completed')}</span>
+      </span>
     ) : (
-      <Tag
-        icon={<ClockCircleOutlined />}
-        color="warning"
-        className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
-      >
-        {text || 'In Progress'}
-      </Tag>
+      <span className={`badge-pill badge-pill-warning ${className}`}>
+        <span className="w-1.5 h-1.5 rounded-full dot animate-pulse-dot" />
+        <ClockCircleFilled className="text-[11px]" />
+        <span>{text || t('tasks.inProgress')}</span>
+      </span>
     );
   }
 
   if (type === 'user_status') {
     return value ? (
-      <Tag
-        icon={<CheckCircleOutlined />}
-        color="success"
-        className="px-2.5 py-0.5 rounded-full text-xs font-medium"
-      >
-        {text || 'Active'}
-      </Tag>
+      <span className={`badge-pill badge-pill-success ${className}`}>
+        <span className="w-1.5 h-1.5 rounded-full dot animate-pulse-dot" />
+        <span>{text || t('users.active')}</span>
+      </span>
     ) : (
-      <Tag
-        icon={<StopOutlined />}
-        color="error"
-        className="px-2.5 py-0.5 rounded-full text-xs font-medium"
-      >
-        {text || 'Inactive'}
-      </Tag>
+      <span className={`badge-pill badge-pill-error ${className}`}>
+        <StopFilled className="text-[10px]" />
+        <span>{text || t('users.inactive')}</span>
+      </span>
     );
   }
 
   if (type === 'user_role') {
     return value ? (
-      <Tag
-        icon={<CrownOutlined />}
-        color="purple"
-        className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
-      >
-        {text || 'Super Admin'}
-      </Tag>
+      <span className={`badge-pill badge-pill-role-admin ${className}`}>
+        <CrownFilled className="text-[11px]" />
+        <span>{text || t('auth.superAdmin')}</span>
+      </span>
     ) : (
-      <Tag
-        icon={<UserOutlined />}
-        color="blue"
-        className="px-2.5 py-0.5 rounded-full text-xs font-medium"
-      >
-        {text || 'Standard User'}
-      </Tag>
+      <span className={`badge-pill badge-pill-role-user ${className}`}>
+        <UserOutlined className="text-[11px]" />
+        <span>{text || t('auth.standardUser')}</span>
+      </span>
     );
   }
 

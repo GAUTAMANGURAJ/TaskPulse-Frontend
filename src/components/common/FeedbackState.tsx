@@ -35,7 +35,7 @@ export const FeedbackState: React.FC<FeedbackStateProps> = ({
         style={{ minHeight }}
       >
         <Spin indicator={antIcon} />
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 animate-pulse">
+        <p className="text-sm font-medium text-theme-muted animate-pulse">
           {title || 'Loading data...'}
         </p>
       </div>
@@ -47,9 +47,9 @@ export const FeedbackState: React.FC<FeedbackStateProps> = ({
       <div className="py-8 flex items-center justify-center" style={{ minHeight }}>
         <Result
           status="error"
-          title={<span className="text-lg font-bold">{title || 'Data Request Failed'}</span>}
+          title={<span className="text-lg font-bold text-theme-title">{title || 'Data Request Failed'}</span>}
           subTitle={
-            <span className="text-slate-500 text-xs max-w-md block">
+            <span className="text-theme-muted text-xs max-w-md block">
               {description ||
                 'Unable to communicate with the enterprise service. Please verify network status or retry.'}
             </span>
@@ -60,7 +60,7 @@ export const FeedbackState: React.FC<FeedbackStateProps> = ({
                 type="primary"
                 icon={<ReloadOutlined />}
                 onClick={onRetry}
-                className="bg-indigo-600 hover:bg-indigo-700"
+                className="btn-primary"
               >
                 Retry Request
               </Button>
@@ -76,10 +76,10 @@ export const FeedbackState: React.FC<FeedbackStateProps> = ({
       <div className="py-8 flex items-center justify-center" style={{ minHeight }}>
         <Result
           status="403"
-          icon={<StopOutlined className="text-4xl text-rose-500" />}
-          title={<span className="text-lg font-bold">{title || 'Access Prohibited'}</span>}
+          icon={<StopOutlined className="text-4xl text-theme-inactive" />}
+          title={<span className="text-lg font-bold text-theme-title">{title || 'Access Prohibited'}</span>}
           subTitle={
-            <span className="text-slate-500 text-xs">
+            <span className="text-theme-muted text-xs">
               {description || 'Your account does not possess the required RBAC authority for this resource.'}
             </span>
           }
@@ -92,13 +92,13 @@ export const FeedbackState: React.FC<FeedbackStateProps> = ({
     return (
       <div className="py-12 px-4 flex flex-col items-center justify-center" style={{ minHeight }}>
         <Empty
-          image={<FilterOutlined className="text-4xl text-slate-300" />}
+          image={<FilterOutlined className="text-4xl text-theme-muted opacity-40" />}
           description={
             <div className="space-y-1 mt-2">
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <p className="text-sm font-semibold text-theme-title">
                 {title || 'No Matching Records'}
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
+              <p className="text-xs text-theme-muted max-w-sm">
                 {description || 'Adjust your search term or clear the active status filter.'}
               </p>
             </div>
@@ -120,10 +120,10 @@ export const FeedbackState: React.FC<FeedbackStateProps> = ({
       <Empty
         description={
           <div className="space-y-1 mt-2">
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <p className="text-sm font-semibold text-theme-title">
               {title || 'No Records Found'}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
+            <p className="text-xs text-theme-muted max-w-sm">
               {description || 'There are currently no items available in this view.'}
             </p>
           </div>
@@ -133,7 +133,7 @@ export const FeedbackState: React.FC<FeedbackStateProps> = ({
           <Button
             type="primary"
             onClick={onAction}
-            className="mt-2 bg-indigo-600 hover:bg-indigo-700 text-xs"
+            className="mt-2 btn-primary text-xs"
           >
             {actionText}
           </Button>

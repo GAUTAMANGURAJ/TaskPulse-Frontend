@@ -1,14 +1,18 @@
 import React from 'react';
-import { Layout, Menu } from 'antd';
+import { Layout, Menu, Tooltip } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   DashboardOutlined,
-  CheckSquareOutlined,
+  ReadOutlined,
   TeamOutlined,
   UserOutlined,
+  SafetyCertificateOutlined,
   ThunderboltFilled,
 } from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
+import { useI18n } from '../../i18n/I18nContext';
+import { usePermissionDataChecks } from '../../hooks/useUserPermissions';
+import { MODULES } from '../../constants/modulesAndPermissions';
 
 const { Sider } = Layout;
 
@@ -21,31 +25,75 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isSuperAdmin, user } = useAuth();
+  const { checkModulePermission } = usePermissionDataChecks();
+  const { t } = useI18n();
+
+  const canAccessUsers = checkModulePermission(MODULES.USER_MANAGEMENT);
+  const canAccessRoles = checkModulePermission(MODULES.ROLES_MANAGEMENT);
 
   const menuItems = [
     {
       key: '/dashboard',
       icon: <DashboardOutlined className="text-base" />,
-      label: 'Dashboard',
+      label: collapsed ? (
+        <Tooltip title={t('nav.dashboard')} placement="right">
+          <span>{t('nav.dashboard')}</span>
+        </Tooltip>
+      ) : (
+        t('nav.dashboard')
+      ),
     },
     {
       key: '/todos',
-      icon: <CheckSquareOutlined className="text-base" />,
-      label: 'Task Governance',
+      icon: <ReadOutlined className="text-base" />,
+      label: collapsed ? (
+        <Tooltip title={t('nav.tasks')} placement="right">
+          <span>{t('nav.tasks')}</span>
+        </Tooltip>
+      ) : (
+        t('nav.tasks')
+      ),
     },
-    ...(isSuperAdmin
+    ...(canAccessUsers
       ? [
           {
             key: '/users',
             icon: <TeamOutlined className="text-base" />,
-            label: 'User Management',
+            label: collapsed ? (
+              <Tooltip title={t('nav.users')} placement="right">
+                <span>{t('nav.users')}</span>
+              </Tooltip>
+            ) : (
+              t('nav.users')
+            ),
+          },
+        ]
+      : []),
+    ...(canAccessRoles
+      ? [
+          {
+            key: '/roles',
+            icon: <SafetyCertificateOutlined className="text-base" />,
+            label: collapsed ? (
+              <Tooltip title={t('nav.roles')} placement="right">
+                <span>{t('nav.roles')}</span>
+              </Tooltip>
+            ) : (
+              t('nav.roles')
+            ),
           },
         ]
       : []),
     {
       key: '/profile',
       icon: <UserOutlined className="text-base" />,
-      label: 'My Account',
+      label: collapsed ? (
+        <Tooltip title={t('nav.profile')} placement="right">
+          <span>{t('nav.profile')}</span>
+        </Tooltip>
+      ) : (
+        t('nav.profile')
+      ),
     },
   ];
 
@@ -56,23 +104,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
       onCollapse={onCollapse}
       width={260}
       theme="dark"
-      className="border-r border-slate-800 shadow-xl z-20 min-h-screen"
-      style={{
-        background: '#0f172a',
-      }}
+      className="sidebar-enterprise shadow-2xl z-30 sticky top-0 h-screen select-none overflow-y-auto"
     >
       {/* Brand Header */}
-      <div className="h-16 flex items-center px-4 gap-3 border-b border-slate-800/80 overflow-hidden">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/30 shrink-0">
+      <div className="h-16 flex items-center px-4 gap-3 border-b border-[var(--sidebar-border)] overflow-hidden">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30 shrink-0">
           <ThunderboltFilled className="text-xl" />
         </div>
         {!collapsed && (
           <div className="flex flex-col overflow-hidden">
-            <span className="font-bold text-base text-white tracking-wide truncate">
-              TaskPulse
+            <span className="font-extrabold text-base text-white tracking-wide truncate">
+              {t('auth.title')}
             </span>
-            <span className="text-[10px] uppercase font-semibold tracking-wider text-indigo-400">
-              Enterprise Suite
+            <span className="text-[10px] uppercase font-bold tracking-wider text-theme-accent">
+              {t('auth.subtitle')}
             </span>
           </div>
         )}
@@ -86,23 +131,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
           selectedKeys={[location.pathname]}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
-          className="border-none bg-transparent font-medium"
+          className="border-none bg-transparent font-semibold text-sm"
         />
       </div>
 
-      {/* User Status Footer in Sidebar */}
+      {/* User Identity Card in Sidebar Bottom */}
       {!collapsed && user && (
-        <div className="absolute bottom-16 left-0 right-0 p-4 border-t border-slate-800/60 mx-2">
-          <div className="bg-slate-800/50 rounded-xl p-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-indigo-600/30 text-indigo-300 font-bold flex items-center justify-center text-xs shrink-0">
+        <div className="absolute bottom-16 left-0 right-0 p-3 mx-2">
+          <div className="bg-[var(--sidebar-surface)] backdrop-blur-md rounded-xl p-3 border border-[var(--sidebar-border)] flex items-center gap-3 shadow-md">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
               {user.email.charAt(0).toUpperCase()}
             </div>
             <div className="flex flex-col truncate">
-              <span className="text-xs font-semibold text-slate-200 truncate">
+              <span className="text-xs font-bold text-[var(--sidebar-fg)] truncate">
                 {user.email}
               </span>
-              <span className="text-[10px] text-indigo-400 font-medium">
-                {user.is_superuser ? 'Super Administrator' : 'Standard User'}
+              <span className="text-[10px] font-semibold text-theme-accent">
+                {user.is_superuser ? t('auth.superAdmin') : t('auth.standardUser')}
               </span>
             </div>
           </div>

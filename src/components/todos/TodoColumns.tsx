@@ -1,8 +1,9 @@
 import React from 'react';
 import type { ColumnsType } from 'antd/es/table';
-import { Space, Button, Tooltip, Popconfirm, Switch } from 'antd';
+import { Switch } from 'antd';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { CustomStatusBadge } from '../custom/CustomStatusBadge';
+import { CustomActionMenu } from '../custom/CustomActionMenu';
 import type { TodoItem } from '@/types/todo';
 
 export interface TodoColumnActions {
@@ -12,32 +13,33 @@ export interface TodoColumnActions {
   isStatusPending?: boolean;
   statusPendingId?: number | null;
   isDeletePending?: boolean;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 export const getTodoColumns = (actions: TodoColumnActions): ColumnsType<TodoItem> => [
   {
-    title: 'ID',
+    title: actions.t('common.id'),
     dataIndex: 'id',
     key: 'id',
     width: 80,
-    render: (id: number) => <span className="font-mono text-xs text-slate-400">#{id}</span>,
+    render: (id: number) => <span className="font-mono text-xs font-semibold text-theme-muted">#{id}</span>,
   },
   {
-    title: 'Task & Details',
+    title: actions.t('tasks.taskDetails'),
     key: 'title',
     render: (_, record: TodoItem) => (
       <div className="space-y-1">
         <span
-          className={`font-semibold text-sm ${
+          className={`font-semibold text-sm transition-colors ${
             record.is_complete
-              ? 'line-through text-slate-400 dark:text-slate-500'
-              : 'text-slate-900 dark:text-slate-100'
+              ? 'line-through text-theme-muted'
+              : 'text-theme-title'
           }`}
         >
           {record.title}
         </span>
         {record.description && (
-          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 max-w-xl">
+          <p className="text-xs text-theme-body line-clamp-2 max-w-xl">
             {record.description}
           </p>
         )}
@@ -45,7 +47,7 @@ export const getTodoColumns = (actions: TodoColumnActions): ColumnsType<TodoItem
     ),
   },
   {
-    title: 'Status',
+    title: actions.t('common.status'),
     dataIndex: 'is_complete',
     key: 'is_complete',
     width: 140,
@@ -54,53 +56,51 @@ export const getTodoColumns = (actions: TodoColumnActions): ColumnsType<TodoItem
     ),
   },
   {
-    title: 'Completion Toggle',
+    title: actions.t('tasks.taskStatus'),
     key: 'toggle',
     width: 160,
     render: (_, record: TodoItem) => (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5">
         <Switch
           checked={record.is_complete}
           onChange={() => actions.onToggleStatus(record.id, record.is_complete)}
           loading={actions.isStatusPending && actions.statusPendingId === record.id}
-          className={record.is_complete ? 'bg-emerald-500' : ''}
         />
-        <span className="text-xs text-slate-500 font-medium">
-          {record.is_complete ? 'Done' : 'Pending'}
+        <span className="text-xs text-theme-body font-medium">
+          {record.is_complete ? actions.t('tasks.completed') : actions.t('tasks.inProgress')}
         </span>
       </div>
     ),
   },
   {
-    title: 'Actions',
+    title: actions.t('common.actions'),
     key: 'actions',
-    width: 120,
+    width: 90,
+    align: 'center',
     render: (_, record: TodoItem) => (
-      <Space size="small">
-        <Tooltip title="Edit task details">
-          <Button
-            type="text"
-            icon={<EditOutlined className="text-slate-500 hover:text-indigo-600" />}
-            onClick={() => actions.onEdit(record)}
-          />
-        </Tooltip>
-        <Tooltip title="Permanently delete">
-          <Popconfirm
-            title="Delete Task"
-            description="Are you sure you want to delete this task? This action cannot be undone."
-            onConfirm={() => actions.onDelete(record.id)}
-            okText="Yes, Delete"
-            cancelText="Cancel"
-            okButtonProps={{ danger: true, loading: actions.isDeletePending }}
-          >
-            <Button
-              type="text"
-              danger
-              icon={<DeleteOutlined className="hover:text-rose-600" />}
-            />
-          </Popconfirm>
-        </Tooltip>
-      </Space>
+      <CustomActionMenu
+        items={[
+          {
+            key: 'edit',
+            label: actions.t('common.edit'),
+            icon: <EditOutlined className="text-theme-accent" />,
+            onClick: () => actions.onEdit(record),
+          },
+          {
+            key: 'delete',
+            label: actions.t('common.delete'),
+            icon: <DeleteOutlined className="text-theme-inactive" />,
+            danger: true,
+            confirm: {
+              title: actions.t('tasks.deleteTask'),
+              description: actions.t('tasks.deleteConfirm'),
+              okText: actions.t('tasks.confirmDelete'),
+              cancelText: actions.t('tasks.cancel'),
+            },
+            onClick: () => actions.onDelete(record.id),
+          },
+        ]}
+      />
     ),
   },
 ];

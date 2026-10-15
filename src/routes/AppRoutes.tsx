@@ -7,8 +7,11 @@ import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { TodosPage } from '../pages/TodosPage';
 import { UsersPage } from '../pages/UsersPage';
+import { RolesPage } from '../pages/RolesPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { NotFoundPage } from '../pages/NotFoundPage';
+import { PermissionRoute } from '../components/auth/PermissionRoute';
+import { MODULES, SUB_MODULES, PERMISSIONS } from '../constants/modulesAndPermissions';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -31,9 +34,25 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="users"
           element={
-            <AdminRoute>
+            <PermissionRoute
+              module={MODULES.USER_MANAGEMENT}
+              subModule={SUB_MODULES.USER_MANAGEMENT}
+              permission={PERMISSIONS.USER_MANAGEMENT.LIST}
+            >
               <UsersPage />
-            </AdminRoute>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="roles"
+          element={
+            <PermissionRoute
+              module={MODULES.ROLES_MANAGEMENT}
+              subModule={SUB_MODULES.ROLES_MANAGEMENT}
+              permission={PERMISSIONS.ROLES_MANAGEMENT.LIST}
+            >
+              <RolesPage />
+            </PermissionRoute>
           }
         />
         <Route path="profile" element={<ProfilePage />} />

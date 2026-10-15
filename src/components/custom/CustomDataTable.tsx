@@ -2,6 +2,7 @@ import React from 'react';
 import { Table, Card } from 'antd';
 import type { ColumnsType, TableProps } from 'antd/es/table';
 import { EmptyState } from '../common/EmptyState';
+import { useI18n } from '../../i18n/I18nContext';
 
 export interface CustomDataTableProps<T> extends Omit<TableProps<T>, 'columns'> {
   columns: ColumnsType<T>;
@@ -14,6 +15,8 @@ export interface CustomDataTableProps<T> extends Omit<TableProps<T>, 'columns'> 
   emptyDescription?: string;
   onAction?: () => void;
   actionText?: string;
+  scrollY?: number | string | false;
+  scrollHeight?: string;
 }
 
 export function CustomDataTable<T extends object>({
@@ -27,22 +30,40 @@ export function CustomDataTable<T extends object>({
   emptyDescription,
   onAction,
   actionText,
-  pagination = {
+  pagination,
+  scroll,
+  scrollY,
+  scrollHeight,
+  ...tableProps
+}: CustomDataTableProps<T>) {
+  const { t } = useI18n();
+
+  const effectiveScrollY = scrollHeight ?? scrollY ?? 'calc(100vh - 22.5rem)';
+
+  const defaultPagination = {
     pageSize: 10,
     showSizeChanger: true,
     pageSizeOptions: ['10', '25', '50'],
-    showTotal: (total: number) => `Total ${total} entries`,
-  },
-  ...tableProps
-}: CustomDataTableProps<T>) {
+    showTotal: (total: number) => t('common.totalEntries', { total }),
+  };
+
+  const effectivePagination =
+    pagination === false ? false : { ...defaultPagination, ...pagination };
+
+  const effectiveScroll: TableProps<T>['scroll'] = {
+    x: 'max-content',
+    ...(scrollY !== false && effectiveScrollY ? { y: effectiveScrollY } : {}),
+    ...scroll,
+  };
+
   if (!isLoading && dataSource.length === 0) {
     if (isFiltered) {
       return (
-        <Card variant="borderless" className="border border-slate-200/80 dark:border-slate-800">
+        <Card variant="borderless" className="card-enterprise">
           <EmptyState
-            title="No Matching Records"
-            description="No entries match your search or filter parameters."
-            actionText={onClearFilters ? 'Reset Filters' : undefined}
+            title={emptyTitle || t('tasks.noMatchingTitle')}
+            description={emptyDescription || t('tasks.noMatchingDesc')}
+            actionText={onClearFilters ? t('tasks.resetFilters') : undefined}
             onAction={onClearFilters}
           />
         </Card>
@@ -50,10 +71,10 @@ export function CustomDataTable<T extends object>({
     }
 
     return (
-      <Card variant="borderless" className="border border-slate-200/80 dark:border-slate-800">
+      <Card variant="borderless" className="card-enterprise">
         <EmptyState
-          title={emptyTitle || 'No Records Found'}
-          description={emptyDescription || 'There are no entries available in this collection.'}
+          title={emptyTitle || t('tasks.noTasksTitle')}
+          description={emptyDescription || t('tasks.noTasksDesc')}
           actionText={actionText}
           onAction={onAction}
         />
@@ -64,17 +85,21 @@ export function CustomDataTable<T extends object>({
   return (
     <Card
       variant="borderless"
-      className="shadow-sm border border-slate-200/80 dark:border-slate-800"
+      className="card-enterprise overflow-hidden shadow-sm"
       styles={{ body: { padding: 0 } }}
     >
-      <Table<T>
-        columns={columns}
-        dataSource={dataSource}
-        rowKey={rowKey}
-        loading={isLoading}
-        pagination={pagination}
-        {...tableProps}
-      />
+      <div className="w-full">
+        <Table<T>
+          columns={columns}
+          dataSource={dataSource}
+          rowKey={rowKey}
+          loading={isLoading}
+          pagination={effectivePagination}
+          scroll={effectiveScroll}
+          className="ant-table-modern"
+          {...tableProps}
+        />
+      </div>
     </Card>
   );
 }

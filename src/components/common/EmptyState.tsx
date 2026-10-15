@@ -20,10 +20,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       <Empty
         description={
           <div className="space-y-1 mt-2">
-            <p className="text-base font-semibold text-slate-700 dark:text-slate-300">
+            <p className="text-base font-semibold text-theme-title">
               {title}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
+            <p className="text-xs text-theme-muted max-w-sm">
               {description}
             </p>
           </div>
@@ -34,7 +34,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             type="primary"
             icon={<PlusOutlined />}
             onClick={onAction}
-            className="mt-2 bg-indigo-600 hover:bg-indigo-700"
+            className="mt-2 btn-primary"
           >
             {actionText}
           </Button>

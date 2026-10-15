@@ -18,7 +18,23 @@ export type LoginFormData = z.infer<typeof loginSchema>;
 
 export const tokenResponseSchema = z.object({
   access_token: z.string().min(1),
+  refresh_token: z.string().optional(),
   token_type: z.string().default('bearer'),
+  user_id: z.number().int().optional(),
 });
 
 export type TokenResponse = z.infer<typeof tokenResponseSchema>;
+
+export const refreshTokenRequestSchema = z.object({
+  refresh_token: z.string().min(1, 'Refresh token is required'),
+});
+
+export type RefreshTokenRequest = z.infer<typeof refreshTokenRequestSchema>;
+
+export const refreshTokenResponseSchema = z.object({
+  access_token: z.string().min(1),
+  refresh_token: z.string().optional(),
+  token_type: z.string().default('bearer'),
+});
+
+export type RefreshTokenResponse = z.infer<typeof refreshTokenResponseSchema>;

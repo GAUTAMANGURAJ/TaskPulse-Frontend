@@ -1,7 +1,23 @@
 import React, { useEffect } from 'react';
-import { Modal, Form, Input, Checkbox, Button, Alert } from 'antd';
-import { MailOutlined, LockOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { Checkbox, Alert } from 'antd';
+import {
+  MailOutlined,
+  LockOutlined,
+  InfoCircleOutlined,
+  SafetyCertificateOutlined,
+} from '@ant-design/icons';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useCreateUser, useUpdateUser } from '../../api/users';
+import { useRoleList } from '../../api/roles';
+import { useI18n } from '../../i18n/I18nContext';
+import {
+  CustomButton,
+  CustomSelect,
+  CustomInput,
+  CustomModal,
+} from '../custom';
+import { createUserSchema, updateUserSchema, getCreateUserSchema } from '@/schemas/user';
 import type { User, UserCreatePayload, UserUpdatePayload } from '@/types/user';
 
 interface UserModalProps {
@@ -11,47 +27,80 @@ interface UserModalProps {
   currentUserId?: number;
 }
 
+interface FormValues {
+  email: string;
+  password?: string;
+  role_id: number;
+  is_active?: boolean;
+  is_superuser?: boolean;
+}
+
 export const UserModal: React.FC<UserModalProps> = ({
   open,
   onClose,
   userToEdit,
   currentUserId,
 }) => {
-  const [form] = Form.useForm();
+  const { t } = useI18n();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
+  const { data: roles = [], isLoading: isRolesLoading } = useRoleList(open);
 
   const isEditMode = Boolean(userToEdit);
   const isEditingSelf = Boolean(userToEdit && userToEdit.id === currentUserId);
 
+  const activeSchema = isEditMode ? updateUserSchema : getCreateUserSchema(t);
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting: isFormSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(activeSchema as never),
+    defaultValues: {
+      email: '',
+      password: '',
+      role_id: undefined as unknown as number,
+      is_active: true,
+      is_superuser: false,
+    },
+    mode: 'onChange',
+  });
+
   useEffect(() => {
     if (open) {
       if (userToEdit) {
-        form.setFieldsValue({
+        reset({
           email: userToEdit.email,
           password: '',
+          role_id: userToEdit.role_id || (undefined as unknown as number),
           is_active: userToEdit.is_active,
           is_superuser: userToEdit.is_superuser,
         });
       } else {
-        form.resetFields();
-        form.setFieldsValue({
+        const defaultRole = roles.find((r) => r.is_active);
+        reset({
+          email: '',
+          password: '',
+          role_id: defaultRole ? defaultRole.id : (undefined as unknown as number),
           is_active: true,
           is_superuser: false,
         });
       }
     }
-  }, [open, userToEdit, form]);
+  }, [open, userToEdit, roles, reset]);
 
-  const handleSubmit = async (values: Record<string, unknown>) => {
+  const onSubmit = async (values: FormValues) => {
     try {
       if (isEditMode && userToEdit) {
         const updatePayload: UserUpdatePayload = {
-          email: values.email as string,
-          is_active: values.is_active as boolean,
-          is_superuser: values.is_superuser as boolean,
+          email: values.email,
+          role_id: values.role_id,
+          is_active: values.is_active,
+          is_superuser: values.is_superuser,
         };
-        if (values.password && typeof values.password === 'string' && values.password.trim()) {
+        if (values.password && values.password.trim()) {
           updatePayload.password = values.password;
         }
 
@@ -61,141 +110,178 @@ export const UserModal: React.FC<UserModalProps> = ({
         });
       } else {
         const createPayload: UserCreatePayload = {
-          email: values.email as string,
-          password: values.password as string,
+          email: values.email,
+          password: values.password || '',
+          role_id: values.role_id,
         };
         await createUser.mutateAsync(createPayload);
       }
       onClose();
     } catch {
-      // Error handled by mutation toast
+      // Errors handled by API toast notifications
     }
   };
 
-  const isSubmitting = createUser.isPending || updateUser.isPending;
+  const isPending = createUser.isPending || updateUser.isPending || isFormSubmitting;
+
+  const roleOptions = roles.map((role) => ({
+    label: (
+      <div className="flex items-center justify-between">
+        <span className="font-medium">{role.name}</span>
+        <span className="text-[10px] text-theme-muted">
+          ({role.permission_count || 0} permissions)
+        </span>
+      </div>
+    ),
+    value: role.id,
+    disabled: !role.is_active,
+  }));
 
   return (
-    <Modal
+    <CustomModal
       open={open}
-      title={
-        <div className="text-lg font-bold text-slate-800 dark:text-slate-100">
-          {isEditMode ? `Update User Profile: #${userToEdit?.id}` : 'Provision New System User'}
-        </div>
-      }
+      title={isEditMode ? `${t('users.editUser')}: #${userToEdit?.id}` : t('users.provisionUser')}
       onCancel={onClose}
-      footer={null}
+      showFooter={false}
       destroyOnClose
       centered
       width={520}
+      className="enterprise-modal"
     >
       {!isEditMode && (
         <Alert
-          message="Automated Email Notification"
-          description="Upon account creation, the FastAPI backend will dispatch an asynchronous welcome email with onboarding information to the recipient."
+          message={t('users.autoProvisioningTitle')}
+          description={t('users.autoProvisioningDesc')}
           type="info"
           showIcon
           icon={<InfoCircleOutlined />}
-          className="my-3 text-xs"
+          className="my-3 text-xs rounded-lg"
         />
       )}
 
       {isEditingSelf && (
         <Alert
-          message="Account Self-Management Notice"
-          description="You are currently editing your own super administrator profile. Self-deactivation and demotion are restricted."
+          message={t('users.selfEditNoticeTitle')}
+          description={t('users.selfEditNoticeDesc')}
           type="warning"
           showIcon
-          className="my-3 text-xs"
+          className="my-3 text-xs rounded-lg"
         />
       )}
 
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-        className="mt-4"
-        requiredMark={false}
-      >
-        <Form.Item
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-4" noValidate>
+        {/* Email Address */}
+        <Controller
           name="email"
-          label={<span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Corporate Email</span>}
-          rules={[
-            { required: true, message: 'Corporate email is required' },
-            { type: 'email', message: 'Please enter a valid email address' },
-          ]}
-        >
-          <Input
-            prefix={<MailOutlined className="text-slate-400 mr-1" />}
-            placeholder="developer@company.com"
-            size="large"
-            className="rounded-lg"
-          />
-        </Form.Item>
+          control={control}
+          render={({ field }) => (
+            <CustomInput
+              label={t('users.emailAddress')}
+              isRequired
+              tooltip={t('users.emailTooltip')}
+              prefix={<MailOutlined className="text-theme-muted mr-1" />}
+              placeholder={t('auth.emailPlaceholder')}
+              error={errors.email?.message}
+              size="large"
+              {...field}
+            />
+          )}
+        />
 
-        <Form.Item
+        {/* Password */}
+        <Controller
           name="password"
-          label={
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              {isEditMode ? 'New Password (leave blank to keep unchanged)' : 'Initial Password'}
-            </span>
-          }
-          rules={[
-            { required: !isEditMode, message: 'Password is required' },
-            { min: 6, message: 'Password must be at least 6 characters' },
-          ]}
-        >
-          <Input.Password
-            prefix={<LockOutlined className="text-slate-400 mr-1" />}
-            placeholder={isEditMode ? 'Leave blank to preserve password' : '••••••••'}
-            size="large"
-            className="rounded-lg"
-          />
-        </Form.Item>
+          control={control}
+          render={({ field }) => (
+            <CustomInput
+              label={isEditMode ? t('users.passwordOptional') : t('auth.passwordLabel')}
+              isRequired={!isEditMode}
+              subLabel={isEditMode ? t('tasks.optionalLabel') : undefined}
+              tooltip={t('profile.passwordTooltip')}
+              prefix={<LockOutlined className="text-theme-muted mr-1" />}
+              placeholder={isEditMode ? '••••••••' : t('auth.passwordPlaceholder')}
+              isPassword
+              error={errors.password?.message}
+              size="large"
+              {...field}
+            />
+          )}
+        />
 
+        {/* Mandatory Role Selection */}
+        <Controller
+          name="role_id"
+          control={control}
+          render={({ field }) => (
+            <CustomSelect
+              label={t('users.role')}
+              isRequired
+              error={errors.role_id?.message}
+              tooltip={t('users.roleTooltip')}
+              value={field.value}
+              onChange={(val) => field.onChange(val)}
+              options={roleOptions}
+              loading={isRolesLoading}
+              placeholder={t('users.selectRolePlaceholder')}
+              size="large"
+              suffixIcon={<SafetyCertificateOutlined className="text-theme-muted" />}
+            />
+          )}
+        />
+
+        {/* Active & Superuser Toggles (Edit Mode) */}
         {isEditMode && (
-          <div className="space-y-3 pt-2 pb-4">
-            <Form.Item
-              name="is_active"
-              valuePropName="checked"
-              className="m-0"
-            >
-              <Checkbox
-                disabled={isEditingSelf}
-                className="text-xs font-medium text-slate-700 dark:text-slate-300"
-              >
-                Account Active (grant system access)
-              </Checkbox>
-            </Form.Item>
+          <div className="space-y-3 pt-2 pb-2">
+            <div>
+              <Controller
+                name="is_active"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    checked={field.value}
+                    onChange={(e) => field.onChange(e.target.checked)}
+                    disabled={isEditingSelf}
+                    className="text-xs font-medium text-theme-body"
+                  >
+                    {t('users.accountActive')}
+                  </Checkbox>
+                )}
+              />
+            </div>
 
-            <Form.Item
-              name="is_superuser"
-              valuePropName="checked"
-              className="m-0"
-            >
-              <Checkbox
-                disabled={isEditingSelf}
-                className="text-xs font-medium text-slate-700 dark:text-slate-300"
-              >
-                Super Administrator (unrestricted RBAC privileges)
-              </Checkbox>
-            </Form.Item>
+            <div>
+              <Controller
+                name="is_superuser"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    checked={field.value}
+                    onChange={(e) => field.onChange(e.target.checked)}
+                    disabled={isEditingSelf}
+                    className="text-xs font-medium text-theme-body"
+                  >
+                    {t('users.superAdminRole')}
+                  </Checkbox>
+                )}
+              />
+            </div>
           </div>
         )}
 
-        <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
-          <Button onClick={onClose} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={isSubmitting}
-            className="bg-indigo-600 hover:bg-indigo-700 font-semibold"
+        {/* Modal Actions */}
+        <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-theme-divider">
+          <CustomButton variant="secondary" onClick={onClose} disabled={isPending}>
+            {t('common.cancel')}
+          </CustomButton>
+          <CustomButton
+            type="submit"
+            variant="primary"
+            loading={isPending}
           >
-            {isEditMode ? 'Save User Changes' : 'Provision User'}
-          </Button>
+            {isEditMode ? t('users.saveChanges') : t('users.provisionButton')}
+          </CustomButton>
         </div>
-      </Form>
-    </Modal>
+      </form>
+    </CustomModal>
   );
 };

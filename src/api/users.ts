@@ -138,3 +138,29 @@ export const useUpdateUserStatus = () => {
     },
   });
 };
+
+export const updateUserPreferencesRequest = async (
+  preferences: { theme_mode?: 'light' | 'dark' | 'system'; language?: 'en' | 'es' },
+  signal?: AbortSignal
+): Promise<User> => {
+  const raw = await apiClient.put<unknown>(ENDPOINTS.USERS.PREFERENCES, preferences, { signal });
+  return validateApiResponse(userResponseSchema, raw);
+};
+
+export const useUpdateUserPreferences = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (preferences: { theme_mode?: 'light' | 'dark' | 'system'; language?: 'en' | 'es' }) =>
+      updateUserPreferencesRequest(preferences),
+    onSuccess: (updatedUser) => {
+      queryClient.setQueryData(['auth', 'me'], updatedUser);
+      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.DETAIL(updatedUser.id) });
+      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.ALL });
+    },
+    onError: (error: Error) => {
+      console.warn('Failed to sync preferences to backend:', error.message);
+    },
+  });
+};
+

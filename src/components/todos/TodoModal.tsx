@@ -1,7 +1,17 @@
 import React, { useEffect } from 'react';
-import { Modal, Form, Input, Checkbox, Button } from 'antd';
+import { Checkbox } from 'antd';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useCreateTodo, useUpdateTodo } from '../../api/todos';
-import type { TodoItem, TodoCreatePayload } from '@/types/todo';
+import { useI18n } from '../../i18n/I18nContext';
+import {
+  CustomModal,
+  CustomInput,
+  CustomTextarea,
+  CustomButton,
+} from '../custom';
+import { todoSchema, type TodoFormData } from '@/schemas/todo';
+import type { TodoItem } from '@/types/todo';
 
 interface TodoModalProps {
   open: boolean;
@@ -10,30 +20,46 @@ interface TodoModalProps {
 }
 
 export const TodoModal: React.FC<TodoModalProps> = ({ open, onClose, todoToEdit }) => {
-  const [form] = Form.useForm<TodoCreatePayload>();
+  const { t } = useI18n();
   const createTodo = useCreateTodo();
   const updateTodo = useUpdateTodo();
 
   const isEditMode = Boolean(todoToEdit);
 
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<TodoFormData>({
+    resolver: zodResolver(todoSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      is_complete: false,
+    },
+    mode: 'onChange',
+  });
+
   useEffect(() => {
     if (open) {
       if (todoToEdit) {
-        form.setFieldsValue({
+        reset({
           title: todoToEdit.title,
           description: todoToEdit.description || '',
           is_complete: todoToEdit.is_complete,
         });
       } else {
-        form.resetFields();
-        form.setFieldsValue({
+        reset({
+          title: '',
+          description: '',
           is_complete: false,
         });
       }
     }
-  }, [open, todoToEdit, form]);
+  }, [open, todoToEdit, reset]);
 
-  const handleSubmit = async (values: TodoCreatePayload) => {
+  const onSubmit = async (values: TodoFormData) => {
     try {
       if (isEditMode && todoToEdit) {
         await updateTodo.mutateAsync({
@@ -52,73 +78,84 @@ export const TodoModal: React.FC<TodoModalProps> = ({ open, onClose, todoToEdit 
   const isSubmitting = createTodo.isPending || updateTodo.isPending;
 
   return (
-    <Modal
+    <CustomModal
       open={open}
-      title={
-        <div className="text-lg font-bold text-slate-800 dark:text-slate-100">
-          {isEditMode ? 'Edit Task Details' : 'Create New Enterprise Task'}
-        </div>
-      }
+      title={isEditMode ? t('tasks.editTask') : t('tasks.createTask')}
       onCancel={onClose}
-      footer={null}
+      showFooter={false}
       destroyOnClose
       centered
       width={520}
+      className="enterprise-modal"
     >
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-        className="mt-4"
-        requiredMark={false}
-      >
-        <Form.Item
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-4" noValidate>
+        {/* Task Title */}
+        <Controller
           name="title"
-          label={<span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Task Title</span>}
-          rules={[
-            { required: true, message: 'Task title is required' },
-            { max: 255, message: 'Title cannot exceed 255 characters' },
-          ]}
-        >
-          <Input
-            placeholder="e.g. Conduct Q3 compliance audit"
-            size="large"
-            className="rounded-lg"
-          />
-        </Form.Item>
+          control={control}
+          render={({ field }) => (
+            <CustomInput
+              label={t('tasks.taskTitle')}
+              isRequired
+              tooltip={t('tasks.taskTitleTooltip')}
+              placeholder={t('tasks.taskTitlePlaceholder')}
+              error={errors.title?.message}
+              size="large"
+              {...field}
+            />
+          )}
+        />
 
-        <Form.Item
+        {/* Task Description */}
+        <Controller
           name="description"
-          label={<span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Description (Optional)</span>}
-          rules={[{ max: 1000, message: 'Description cannot exceed 1000 characters' }]}
-        >
-          <Input.TextArea
-            rows={4}
-            placeholder="Provide relevant context, deliverable guidelines, or requirements..."
-            className="rounded-lg"
+          control={control}
+          render={({ field }) => (
+            <CustomTextarea
+              label={t('tasks.taskDescription')}
+              subLabel={t('tasks.optionalLabel')}
+              tooltip={t('tasks.taskDescTooltip')}
+              placeholder={t('tasks.taskDescPlaceholder')}
+              error={errors.description?.message}
+              rows={4}
+              value={field.value || ''}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+            />
+          )}
+        />
+
+        {/* Task Status */}
+        <div>
+          <Controller
+            name="is_complete"
+            control={control}
+            render={({ field }) => (
+              <Checkbox
+                checked={field.value}
+                onChange={(e) => field.onChange(e.target.checked)}
+                className="text-xs font-medium text-theme-body"
+              >
+                {t('tasks.taskStatus')}
+              </Checkbox>
+            )}
           />
-        </Form.Item>
-
-        <Form.Item name="is_complete" valuePropName="checked" className="mb-6">
-          <Checkbox className="text-sm font-medium text-slate-700 dark:text-slate-300">
-            Mark task as completed
-          </Checkbox>
-        </Form.Item>
-
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <Button onClick={onClose} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={isSubmitting}
-            className="bg-indigo-600 hover:bg-indigo-700 font-semibold"
-          >
-            {isEditMode ? 'Save Changes' : 'Create Task'}
-          </Button>
         </div>
-      </Form>
-    </Modal>
+
+        {/* Form Actions */}
+        <div className="flex items-center justify-end gap-2 pt-4 border-t border-theme-divider">
+          <CustomButton variant="secondary" onClick={onClose} disabled={isSubmitting}>
+            {t('common.cancel')}
+          </CustomButton>
+          <CustomButton
+            type="submit"
+            variant="primary"
+            loading={isSubmitting}
+          >
+            {isEditMode ? t('tasks.saveChanges') : t('tasks.createButton')}
+          </CustomButton>
+        </div>
+      </form>
+    </CustomModal>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Progress, Button, Table, Space, Tag } from 'antd';
+import { Progress, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   CheckSquareOutlined,
@@ -14,14 +14,20 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTodos, useUpdateTodoStatus } from '../api/todos';
 import { useUsers } from '../api/users';
-import { CustomStatCard } from '../components/custom/CustomStatCard';
-import { CustomStatusBadge } from '../components/custom/CustomStatusBadge';
+import {
+  CustomStatCard,
+  CustomStatusBadge,
+  CustomButton,
+  CustomCard,
+} from '../components/custom';
 import { LoadingState } from '../components/common/LoadingState';
 import { TodoModal } from '../components/todos/TodoModal';
+import { useI18n } from '../i18n/I18nContext';
 import type { TodoItem } from '@/types/todo';
 
 export const DashboardPage: React.FC = () => {
   const { user, isSuperAdmin } = useAuth();
+  const { t, formatNumber } = useI18n();
   const navigate = useNavigate();
   const [isCreateTodoModalOpen, setIsCreateTodoModalOpen] = useState(false);
 
@@ -50,20 +56,22 @@ export const DashboardPage: React.FC = () => {
 
   const columns: ColumnsType<TodoItem> = [
     {
-      title: 'Task ID',
+      title: t('common.id'),
       dataIndex: 'id',
       key: 'id',
-      width: 90,
-      render: (id: number) => <span className="font-mono text-xs text-slate-400">#{id}</span>,
+      width: 80,
+      render: (id: number) => <span className="font-mono text-xs text-theme-muted font-semibold">#{id}</span>,
     },
     {
-      title: 'Title',
+      title: t('tasks.taskTitle'),
       dataIndex: 'title',
       key: 'title',
       render: (text: string, record: TodoItem) => (
         <span
-          className={`font-semibold text-sm ${
-            record.is_complete ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-200'
+          className={`font-semibold text-sm transition-colors ${
+            record.is_complete
+              ? 'line-through text-theme-muted'
+              : 'text-theme-title'
           }`}
         >
           {text}
@@ -71,7 +79,7 @@ export const DashboardPage: React.FC = () => {
       ),
     },
     {
-      title: 'Status',
+      title: t('common.status'),
       dataIndex: 'is_complete',
       key: 'is_complete',
       width: 140,
@@ -80,70 +88,70 @@ export const DashboardPage: React.FC = () => {
       ),
     },
     {
-      title: 'Action',
+      title: t('common.actions'),
       key: 'action',
       width: 130,
       render: (_, record: TodoItem) => (
-        <Button
-          size="small"
-          type={record.is_complete ? 'default' : 'primary'}
+        <CustomButton
+          size="sm"
+          variant={record.is_complete ? 'secondary' : 'primary'}
           onClick={() => handleToggleStatus(record)}
           loading={updateTodoStatus.isPending && updateTodoStatus.variables?.id === record.id}
-          className={!record.is_complete ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
         >
-          {record.is_complete ? 'Reopen' : 'Mark Done'}
-        </Button>
+          {record.is_complete ? t('common.reopen') : t('common.markDone')}
+        </CustomButton>
       ),
     },
   ];
 
   if (isTodosLoading || (isSuperAdmin && isUsersLoading)) {
-    return <LoadingState tip="Assembling enterprise dashboard..." />;
+    return <LoadingState tip={t('common.loading')} />;
   }
 
   return (
     <div className="space-y-6">
-      {/* Welcome & Banner */}
-      <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-xl border border-indigo-700/50 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
+      {/* Executive Welcome Hero Banner */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 text-white rounded-2xl p-6 sm:p-8 shadow-2xl border border-indigo-500/20 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="space-y-2.5 relative z-10">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
-              Operations Console
+            <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+              {t('dashboard.title')}
             </span>
             {isSuperAdmin && (
-              <Tag color="purple" className="m-0 font-semibold text-xs">
-                Super Admin Privilege
-              </Tag>
+              <span className="badge-pill badge-pill-role-admin text-[11px]">
+                {t('auth.superAdmin')}
+              </span>
             )}
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-            Hello, {user?.email}
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            {user?.email}
           </h2>
-          <p className="text-sm text-indigo-200 max-w-xl">
-            Welcome to the TaskPulse enterprise orchestration dashboard. Monitor system tasks, oversee user governance, and manage operational workflows.
+          <p className="text-sm text-indigo-200/90 max-w-xl font-normal leading-relaxed">
+            {t('dashboard.subtitle')}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <Button
-            type="primary"
+        <div className="flex flex-wrap items-center gap-3 shrink-0 relative z-10">
+          <CustomButton
+            variant="primary"
+            size="lg"
             icon={<PlusOutlined />}
-            size="large"
             onClick={() => setIsCreateTodoModalOpen(true)}
-            className="bg-white text-indigo-900 hover:bg-indigo-50 hover:text-indigo-950 font-bold border-none shadow-lg h-11"
           >
-            Create Task
-          </Button>
+            {t('tasks.createTask')}
+          </CustomButton>
           {isSuperAdmin && (
-            <Button
-              ghost
-              size="large"
+            <CustomButton
+              variant="secondary"
+              size="lg"
               icon={<TeamOutlined />}
               onClick={() => navigate('/users')}
-              className="border-indigo-400 text-white hover:border-white h-11"
+              className="bg-white/10 text-white border-white/20 hover:bg-white/20 hover:text-white"
             >
-              Manage Users
-            </Button>
+              {t('users.title')}
+            </CustomButton>
           )}
         </div>
       </div>
@@ -151,119 +159,126 @@ export const DashboardPage: React.FC = () => {
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <CustomStatCard
-          title="Total Tasks"
-          value={totalTasks}
-          subtitle="System-wide tasks"
+          title={t('dashboard.totalTasks')}
+          value={formatNumber(totalTasks)}
+          subtitle={t('dashboard.indexedSubtitle')}
           icon={<ThunderboltOutlined />}
-          iconBgColor="bg-indigo-50 dark:bg-indigo-950/50"
-          iconColor="text-indigo-600 dark:text-indigo-400"
+          iconBgColor="surface-subtle"
+          iconColor="text-theme-accent"
+          trend={{ value: '12%', isPositive: true }}
         />
 
         <CustomStatCard
-          title="Completed"
-          value={completedTasks}
-          subtitle={`${completionRate}% achieved`}
+          title={t('dashboard.completedTasks')}
+          value={formatNumber(completedTasks)}
+          subtitle={`${completionRate}% ${t('dashboard.completionRate').toLowerCase()}`}
           icon={<CheckCircleOutlined />}
-          iconBgColor="bg-emerald-50 dark:bg-emerald-950/50"
-          iconColor="text-emerald-600 dark:text-emerald-400"
+          iconBgColor="surface-subtle"
+          iconColor="text-theme-active"
+          trend={{ value: '18%', isPositive: true }}
         />
 
         <CustomStatCard
-          title="In Progress"
-          value={pendingTasks}
-          subtitle="Awaiting completion"
+          title={t('dashboard.pendingTasks')}
+          value={formatNumber(pendingTasks)}
+          subtitle={t('dashboard.pendingSubtitle')}
           icon={<ClockCircleOutlined />}
-          iconBgColor="bg-amber-50 dark:bg-amber-950/50"
-          iconColor="text-amber-600 dark:text-amber-400"
+          iconBgColor="surface-subtle"
+          iconColor="text-theme-muted"
         />
 
         {isSuperAdmin ? (
           <CustomStatCard
-            title="Total Users"
-            value={totalUsersCount}
-            subtitle={`${activeUsersCount} active accounts`}
+            title={t('dashboard.totalUsers')}
+            value={formatNumber(totalUsersCount)}
+            subtitle={`${activeUsersCount} ${t('users.active').toLowerCase()}`}
             icon={<TeamOutlined />}
-            iconBgColor="bg-purple-50 dark:bg-purple-950/50"
-            iconColor="text-purple-600 dark:text-purple-400"
+            iconBgColor="surface-subtle"
+            iconColor="text-theme-accent"
+            trend={{ value: '4%', isPositive: true }}
           />
         ) : (
           <CustomStatCard
-            title="Completion Rate"
+            title={t('dashboard.completionRate')}
             value={`${completionRate}%`}
-            subtitle="Overall progress"
+            subtitle={t('dashboard.overallProgressSubtitle')}
             icon={<CheckSquareOutlined />}
-            iconBgColor="bg-violet-50 dark:bg-violet-950/50"
-            iconColor="text-violet-600 dark:text-violet-400"
+            iconBgColor="surface-subtle"
+            iconColor="text-theme-accent"
           />
         )}
       </div>
 
-      {/* Main Grid: Progress & Recent Tasks */}
+      {/* Progress & Recent Tasks Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Progress & Overview Card */}
-        <Card
-          title={<span className="font-bold text-base">Workflow Completion</span>}
-          className="shadow-sm border border-slate-200/80 dark:border-slate-800"
+        <CustomCard
+          title={<span className="font-bold text-base text-theme-title">{t('dashboard.workflowProgress')}</span>}
         >
           <div className="flex flex-col items-center justify-center py-6 text-center space-y-4">
             <Progress
               type="circle"
               percent={completionRate}
               strokeColor={{
-                '0%': '#4f46e5',
-                '100%': '#10b981',
+                '0%': 'var(--primary-color)',
+                '100%': 'var(--success-color)',
               }}
-              size={150}
+              size={155}
               strokeWidth={10}
             />
             <div className="space-y-1">
-              <h4 className="font-bold text-slate-800 dark:text-slate-100 text-lg">
-                {completedTasks} of {totalTasks} Tasks Completed
+              <h4 className="font-bold text-theme-title text-lg">
+                {t('dashboard.tasksCompletedOf', { completed: completedTasks, total: totalTasks })}
               </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-theme-muted">
                 {pendingTasks === 0 && totalTasks > 0
-                  ? 'All tasks have been successfully concluded!'
-                  : `${pendingTasks} tasks currently pending review.`}
+                  ? t('dashboard.allConcluded')
+                  : t('dashboard.pendingReview', { count: pendingTasks })}
               </p>
             </div>
 
-            <div className="w-full pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-around text-xs">
+            <div className="w-full pt-4 border-t border-theme-divider flex justify-around text-xs">
               <div>
-                <span className="block text-slate-400 font-medium">Closed</span>
-                <span className="text-emerald-600 font-bold text-sm">{completedTasks}</span>
+                <span className="block text-theme-muted font-semibold">{t('tasks.completed')}</span>
+                <span className="text-theme-active font-black text-sm">{completedTasks}</span>
               </div>
-              <div className="border-r border-slate-200 dark:border-slate-800" />
+              <div className="border-r border-theme-divider" />
               <div>
-                <span className="block text-slate-400 font-medium">Pending</span>
-                <span className="text-amber-500 font-bold text-sm">{pendingTasks}</span>
+                <span className="block text-theme-muted font-semibold">{t('tasks.inProgress')}</span>
+                <span className="text-theme-muted font-black text-sm">{pendingTasks}</span>
               </div>
             </div>
           </div>
-        </Card>
+        </CustomCard>
 
-        {/* Recent Tasks List */}
-        <Card
-          title={<span className="font-bold text-base">Recent Tasks</span>}
+        {/* Recent Tasks Table */}
+        <CustomCard
+          title={<span className="font-bold text-base text-theme-title">{t('dashboard.recentTasks')}</span>}
           extra={
-            <Button
-              type="link"
+            <button
+              type="button"
               onClick={() => navigate('/todos')}
-              className="text-indigo-600 dark:text-indigo-400 font-semibold p-0 flex items-center gap-1"
+              className="text-theme-accent font-semibold text-xs flex items-center gap-1 hover:underline cursor-pointer bg-transparent border-none"
             >
-              View All <RightOutlined className="text-xs" />
-            </Button>
+              <span>{t('dashboard.viewAllTasks')}</span>
+              <RightOutlined className="text-[10px]" />
+            </button>
           }
-          className="shadow-sm border border-slate-200/80 dark:border-slate-800 lg:col-span-2"
+          className="lg:col-span-2 overflow-hidden"
+          bodyClassName="p-0"
         >
-          <Table
-            columns={columns}
-            dataSource={recentTodos}
-            rowKey="id"
-            pagination={false}
-            size="small"
-            locale={{ emptyText: 'No recent tasks found' }}
-          />
-        </Card>
+          <div className="overflow-x-auto">
+            <Table
+              columns={columns}
+              dataSource={recentTodos}
+              rowKey="id"
+              pagination={false}
+              size="middle"
+              className="ant-table-modern"
+              locale={{ emptyText: t('tasks.noTasksTitle') }}
+            />
+          </div>
+        </CustomCard>
       </div>
 
       {/* Task Creation Modal */}

@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Card, Input, Radio, Button } from 'antd';
+import { Card, Popconfirm } from 'antd';
 import {
-  SearchOutlined,
   PlusOutlined,
   AppstoreOutlined,
   BarsOutlined,
@@ -9,21 +8,32 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import { useTodos, useDeleteTodo, useUpdateTodoStatus } from '../api/todos';
-import { CustomDataTable } from '../components/custom/CustomDataTable';
-import { CustomStatusBadge } from '../components/custom/CustomStatusBadge';
+import {
+  CustomButton,
+  CustomDataTable,
+  CustomSearchBar,
+  CustomStatusBadge,
+  CustomPageHeader,
+  CustomControlBar,
+  CustomSegmentedTabs,
+} from '../components/custom';
 import { FeedbackState } from '../components/common/FeedbackState';
 import { TodoModal } from '../components/todos/TodoModal';
 import { getTodoColumns } from '../components/todos/TodoColumns';
+import { useI18n } from '../i18n/I18nContext';
 import type { TodoItem } from '@/types/todo';
 
+type TodoStatusFilter = 'all' | 'active' | 'completed';
+
 export const TodosPage: React.FC = () => {
+  const { t } = useI18n();
   const { data: todos = [], isLoading, isError, error, refetch } = useTodos();
   const deleteTodo = useDeleteTodo();
   const updateTodoStatus = useUpdateTodoStatus();
 
   // Filter & presentation state
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [statusFilter, setStatusFilter] = useState<TodoStatusFilter>('all');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTodo, setSelectedTodo] = useState<TodoItem | null>(null);
@@ -74,16 +84,17 @@ export const TodosPage: React.FC = () => {
         isStatusPending: updateTodoStatus.isPending,
         statusPendingId: (updateTodoStatus.variables as { id?: number })?.id,
         isDeletePending: deleteTodo.isPending,
+        t,
       }),
-    [deleteTodo, updateTodoStatus]
+    [deleteTodo, updateTodoStatus, t]
   );
 
   if (isError) {
     return (
       <FeedbackState
         status="error"
-        title="Failed to Load Tasks"
-        description={error instanceof Error ? error.message : 'Unknown communication error'}
+        title={t('tasks.noMatchingTitle')}
+        description={error instanceof Error ? error.message : t('common.systemError')}
         onRetry={() => refetch()}
       />
     );
@@ -91,78 +102,58 @@ export const TodosPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Task Governance
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Enterprise workflow and task tracking repository
-          </p>
-        </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          size="large"
-          onClick={handleCreate}
-          className="bg-indigo-600 hover:bg-indigo-700 font-semibold shadow-md shadow-indigo-600/20"
-        >
-          Create Task
-        </Button>
-      </div>
+      {/* Standardized Page Header */}
+      <CustomPageHeader
+        title={t('tasks.title')}
+        subtitle={t('tasks.subtitle')}
+        actions={
+          <CustomButton
+            variant="primary"
+            size="md"
+            icon={<PlusOutlined />}
+            onClick={handleCreate}
+          >
+            {t('tasks.createTask')}
+          </CustomButton>
+        }
+      />
 
-      {/* Control Bar: Search, Filters, View Modes */}
-      <Card
-        variant="borderless"
-        className="shadow-sm border border-slate-200/80 dark:border-slate-800"
-        styles={{ body: { padding: '16px 20px' } }}
-      >
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-          <div className="flex-1 max-w-md">
-            <Input
-              prefix={<SearchOutlined className="text-slate-400" />}
-              placeholder="Search by title or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              allowClear
-              className="rounded-lg"
+      {/* Standardized Control Bar: Search, Filters, View Modes */}
+      <CustomControlBar
+        searchSlot={
+          <CustomSearchBar
+            placeholder={t('tasks.searchPlaceholder')}
+            value={searchQuery}
+            onChange={setSearchQuery}
+            onClear={() => setSearchQuery('')}
+            totalCount={todos.length}
+            filteredCount={filteredTodos.length}
+          />
+        }
+        filterSlot={
+          <CustomSegmentedTabs<TodoStatusFilter>
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={[
+              { label: t('tasks.allTasks'), value: 'all', count: todos.length },
+              { label: t('tasks.inProgress'), value: 'active', count: todos.filter((t) => !t.is_complete).length },
+              { label: t('tasks.completed'), value: 'completed', count: todos.filter((t) => t.is_complete).length },
+            ]}
+          />
+        }
+        actionSlot={
+          <div className="border-l border-theme-divider pl-3">
+            <CustomSegmentedTabs<'table' | 'grid'>
+              value={viewMode}
+              onChange={(val) => setViewMode(val)}
+              options={[
+                { label: t('tasks.tableView'), value: 'table', icon: <BarsOutlined /> },
+                { label: t('tasks.gridView'), value: 'grid', icon: <AppstoreOutlined /> },
+              ]}
             />
           </div>
-
-          <div className="flex items-center flex-wrap gap-3 justify-between md:justify-end">
-            <Radio.Group
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              buttonStyle="solid"
-            >
-              <Radio.Button value="all">All ({todos.length})</Radio.Button>
-              <Radio.Button value="active">
-                In Progress ({todos.filter((t) => !t.is_complete).length})
-              </Radio.Button>
-              <Radio.Button value="completed">
-                Completed ({todos.filter((t) => t.is_complete).length})
-              </Radio.Button>
-            </Radio.Group>
-
-            <div className="border-l border-slate-200 dark:border-slate-700 pl-3">
-              <Radio.Group
-                value={viewMode}
-                onChange={(e) => setViewMode(e.target.value)}
-                optionType="button"
-                buttonStyle="solid"
-              >
-                <Radio.Button value="table" title="Table View">
-                  <BarsOutlined />
-                </Radio.Button>
-                <Radio.Button value="grid" title="Grid View">
-                  <AppstoreOutlined />
-                </Radio.Button>
-              </Radio.Group>
-            </div>
-          </div>
-        </div>
-      </Card>
+        }
+      />
 
       {/* Data Presentation */}
       {viewMode === 'table' ? (
@@ -173,9 +164,9 @@ export const TodosPage: React.FC = () => {
           isLoading={isLoading}
           isFiltered={isFiltered}
           onClearFilters={handleClearFilters}
-          emptyTitle="No Tasks Registered"
-          emptyDescription="Start by adding your first task to the repository."
-          actionText="Create New Task"
+          emptyTitle={t('tasks.noTasksTitle')}
+          emptyDescription={t('tasks.noTasksDesc')}
+          actionText={t('tasks.createTask')}
           onAction={handleCreate}
         />
       ) : (
@@ -183,14 +174,14 @@ export const TodosPage: React.FC = () => {
         filteredTodos.length === 0 ? (
           <FeedbackState
             status={isFiltered ? 'filtered_empty' : 'empty'}
-            title={isFiltered ? 'No Matching Tasks' : 'No Tasks in Repository'}
+            title={isFiltered ? t('tasks.noMatchingTitle') : t('tasks.noTasksTitle')}
             description={
               isFiltered
-                ? 'Try refining your keyword or clearing active status filters.'
-                : 'Get started by creating your first task in the enterprise suite.'
+                ? t('tasks.noMatchingDesc')
+                : t('tasks.noTasksDesc')
             }
             onResetFilters={handleClearFilters}
-            actionText="Create New Task"
+            actionText={t('tasks.createTask')}
             onAction={handleCreate}
           />
         ) : (
@@ -198,36 +189,36 @@ export const TodosPage: React.FC = () => {
             {filteredTodos.map((todo) => (
               <Card
                 key={todo.id}
-                className={`transition-all duration-300 hover:shadow-md border ${
+                className={`card-enterprise subtle-lift transition-all duration-300 border ${
                   todo.is_complete
-                    ? 'border-emerald-200 dark:border-emerald-950/60 bg-emerald-50/20 dark:bg-emerald-950/10'
-                    : 'border-slate-200/80 dark:border-slate-800'
+                    ? 'border-[var(--status-success-border)] bg-[var(--status-success-bg)]'
+                    : 'border-theme-divider'
                 }`}
                 styles={{ body: { padding: '20px' } }}
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <span className="font-mono text-xs text-slate-400">#{todo.id}</span>
+                  <span className="font-mono text-xs font-semibold text-theme-muted">#{todo.id}</span>
                   <CustomStatusBadge type="todo_status" value={todo.is_complete} />
                 </div>
 
                 <h3
                   className={`text-base font-bold mb-2 line-clamp-1 ${
                     todo.is_complete
-                      ? 'line-through text-slate-400 dark:text-slate-500'
-                      : 'text-slate-900 dark:text-slate-100'
+                      ? 'line-through text-theme-muted'
+                      : 'text-theme-title'
                   }`}
                 >
                   {todo.title}
                 </h3>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 mb-6 min-h-[48px]">
-                  {todo.description || 'No additional description provided.'}
+                <p className="text-xs text-theme-body line-clamp-3 mb-6 min-h-[48px]">
+                  {todo.description || t('tasks.noAdditionalContext')}
                 </p>
 
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <Button
-                    size="small"
-                    type={todo.is_complete ? 'default' : 'primary'}
+                <div className="pt-3 border-t border-theme-divider flex items-center justify-between">
+                  <CustomButton
+                    size="sm"
+                    variant={todo.is_complete ? 'secondary' : 'primary'}
                     onClick={() =>
                       updateTodoStatus.mutate({ id: todo.id, isComplete: !todo.is_complete })
                     }
@@ -235,25 +226,35 @@ export const TodosPage: React.FC = () => {
                       updateTodoStatus.isPending &&
                       (updateTodoStatus.variables as { id?: number })?.id === todo.id
                     }
-                    className={!todo.is_complete ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
                   >
-                    {todo.is_complete ? 'Reopen' : 'Mark Done'}
-                  </Button>
+                    {todo.is_complete ? t('common.reopen') : t('common.markDone')}
+                  </CustomButton>
 
                   <div className="flex items-center gap-1">
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<EditOutlined className="text-slate-500" />}
+                    <button
+                      type="button"
                       onClick={() => handleEdit(todo)}
-                    />
-                    <Button
-                      type="text"
-                      danger
-                      size="small"
-                      icon={<DeleteOutlined />}
-                      onClick={() => deleteTodo.mutate(todo.id)}
-                    />
+                      className="p-1.5 rounded-lg text-theme-muted hover:text-theme-accent transition-colors cursor-pointer"
+                      title={t('common.edit')}
+                    >
+                      <EditOutlined />
+                    </button>
+                    <Popconfirm
+                      title={t('tasks.deleteTask')}
+                      description={t('tasks.deleteConfirm')}
+                      onConfirm={() => deleteTodo.mutate(todo.id)}
+                      okText={t('tasks.confirmDelete')}
+                      cancelText={t('tasks.cancel')}
+                      okButtonProps={{ danger: true }}
+                    >
+                      <button
+                        type="button"
+                        className="p-1.5 rounded-lg text-theme-muted hover:text-theme-inactive transition-colors cursor-pointer"
+                        title={t('common.delete')}
+                      >
+                        <DeleteOutlined />
+                      </button>
+                    </Popconfirm>
                   </div>
                 </div>
               </Card>

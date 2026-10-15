@@ -1,27 +1,38 @@
-import React, { useState, useMemo } from 'react';
-import { Card, Input, Radio, Button } from 'antd';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
-  SearchOutlined,
   UserAddOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import { useUsers, useUpdateUserStatus } from '../api/users';
-import { CustomDataTable } from '../components/custom/CustomDataTable';
+import {
+  CustomButton,
+  CustomDataTable,
+  CustomSearchBar,
+  CustomPageHeader,
+  CustomControlBar,
+  CustomSegmentedTabs,
+} from '../components/custom';
 import { FeedbackState } from '../components/common/FeedbackState';
 import { UserModal } from '../components/users/UserModal';
 import { UserDetailDrawer } from '../components/users/UserDetailDrawer';
 import { getUserColumns } from '../components/users/UserColumns';
+import { MODULES, SUB_MODULES, PERMISSIONS } from '../constants/modulesAndPermissions';
+import { PermissionGuard } from '../components/auth/PermissionGuard';
+import { useI18n } from '../i18n/I18nContext';
 import type { User } from '@/types/user';
+
+type UserRoleFilter = 'all' | 'admins' | 'standard';
 
 export const UsersPage: React.FC = () => {
   const { user: currentUser } = useAuth();
+  const { t, formatDate } = useI18n();
   const { data: users = [], isLoading, isError, error, refetch } = useUsers(true);
   const updateUserStatus = useUpdateUserStatus();
 
   // Local state
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'admins' | 'standard'>('all');
+  const [roleFilter, setRoleFilter] = useState<UserRoleFilter>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState<User | null>(null);
   const [userToView, setUserToView] = useState<User | null>(null);
@@ -43,50 +54,59 @@ export const UsersPage: React.FC = () => {
     });
   }, [users, searchQuery, roleFilter]);
 
-  const handleEdit = (user: User) => {
+  const handleEdit = useCallback((user: User) => {
     setUserToEdit(user);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleCreate = () => {
+  const handleView = useCallback((user: User) => {
+    setUserToView(user);
+  }, []);
+
+  const handleCreate = useCallback(() => {
     setUserToEdit(null);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleClearFilters = () => {
+  const handleClearFilters = useCallback(() => {
     setSearchQuery('');
     setRoleFilter('all');
-  };
+  }, []);
 
-  const handleToggleStatus = (user: User) => {
-    if (user.id === currentUser?.id && user.is_active) {
-      return;
-    }
-    updateUserStatus.mutate({
-      id: user.id,
-      isActive: !user.is_active,
-    });
-  };
+  const handleToggleStatus = useCallback(
+    (user: User) => {
+      if (user.id === currentUser?.id && user.is_active) {
+        return;
+      }
+      updateUserStatus.mutate({
+        id: user.id,
+        isActive: !user.is_active,
+      });
+    },
+    [currentUser?.id, updateUserStatus]
+  );
 
   const columns = useMemo(
     () =>
       getUserColumns({
         onEdit: handleEdit,
-        onView: (user) => setUserToView(user),
+        onView: handleView,
         onToggleStatus: handleToggleStatus,
         currentUserId: currentUser?.id,
         isStatusPending: updateUserStatus.isPending,
         statusPendingId: (updateUserStatus.variables as { id?: number })?.id,
+        t,
+        formatDate,
       }),
-    [currentUser, updateUserStatus]
+    [handleEdit, handleView, handleToggleStatus, currentUser?.id, updateUserStatus.isPending, updateUserStatus.variables, t, formatDate]
   );
 
   if (isError) {
     return (
       <FeedbackState
         status="error"
-        title="Failed to Load System Users"
-        description={error instanceof Error ? error.message : 'Unknown communication error'}
+        title={t('users.loadErrorTitle')}
+        description={error instanceof Error ? error.message : t('common.systemError')}
         onRetry={() => refetch()}
       />
     );
@@ -94,61 +114,52 @@ export const UsersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            User Governance & RBAC
-            <SafetyCertificateOutlined className="text-indigo-600 text-xl" />
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Manage system access, provision accounts, and oversee administrator permissions
-          </p>
-        </div>
-        <Button
-          type="primary"
-          icon={<UserAddOutlined />}
-          size="large"
-          onClick={handleCreate}
-          className="bg-indigo-600 hover:bg-indigo-700 font-semibold shadow-md shadow-indigo-600/20"
-        >
-          Provision User
-        </Button>
-      </div>
-
-      {/* Control Bar: Search & Role Filters */}
-      <Card
-        variant="borderless"
-        className="shadow-sm border border-slate-200/80 dark:border-slate-800"
-        styles={{ body: { padding: '16px 20px' } }}
-      >
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-          <div className="flex-1 max-w-md">
-            <Input
-              prefix={<SearchOutlined className="text-slate-400" />}
-              placeholder="Search user by email address..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              allowClear
-              className="rounded-lg"
-            />
-          </div>
-
-          <Radio.Group
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            buttonStyle="solid"
+      {/* Standardized Page Header */}
+      <CustomPageHeader
+        title={t('users.title')}
+        subtitle={t('users.subtitle')}
+        icon={<SafetyCertificateOutlined />}
+        actions={
+          <PermissionGuard
+            module={MODULES.USER_MANAGEMENT}
+            subModule={SUB_MODULES.USER_MANAGEMENT}
+            permission={PERMISSIONS.USER_MANAGEMENT.CREATE}
           >
-            <Radio.Button value="all">All Users ({users.length})</Radio.Button>
-            <Radio.Button value="admins">
-              Super Admins ({users.filter((u) => u.is_superuser).length})
-            </Radio.Button>
-            <Radio.Button value="standard">
-              Standard Users ({users.filter((u) => !u.is_superuser).length})
-            </Radio.Button>
-          </Radio.Group>
-        </div>
-      </Card>
+            <CustomButton
+              variant="primary"
+              size="md"
+              icon={<UserAddOutlined />}
+              onClick={handleCreate}
+            >
+              {t('users.provisionUser')}
+            </CustomButton>
+          </PermissionGuard>
+        }
+      />
+
+      {/* Standardized Control Bar: Search & Role Filter Tabs */}
+      <CustomControlBar
+        searchSlot={
+          <CustomSearchBar
+            placeholder={t('users.searchPlaceholder')}
+            value={searchQuery}
+            onChange={setSearchQuery}
+            totalCount={users.length}
+            filteredCount={filteredUsers.length}
+          />
+        }
+        filterSlot={
+          <CustomSegmentedTabs<UserRoleFilter>
+            value={roleFilter}
+            onChange={setRoleFilter}
+            options={[
+              { label: t('users.allUsers'), value: 'all', count: users.length },
+              { label: t('users.superAdmins'), value: 'admins', count: users.filter((u) => u.is_superuser).length },
+              { label: t('users.standardUsers'), value: 'standard', count: users.filter((u) => !u.is_superuser).length },
+            ]}
+          />
+        }
+      />
 
       {/* Users Data Table */}
       <CustomDataTable
@@ -158,9 +169,9 @@ export const UsersPage: React.FC = () => {
         isLoading={isLoading}
         isFiltered={isFiltered}
         onClearFilters={handleClearFilters}
-        emptyTitle="No Users Found"
-        emptyDescription="No system users matched the selected filter or search criteria."
-        actionText="Provision New User"
+        emptyTitle={t('users.noUsersTitle')}
+        emptyDescription={t('users.noUsersDesc')}
+        actionText={t('users.provisionUser')}
         onAction={handleCreate}
       />
 

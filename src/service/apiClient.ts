@@ -46,10 +46,28 @@ export class ApiClient {
       (error) => Promise.reject(error)
     );
 
-    // 2. Response Interceptor: Error parsing and 401 redirect
+    let isRefreshing = false;
+    let failedQueue: Array<{
+      resolve: (token: string) => void;
+      reject: (error: Error) => void;
+    }> = [];
+
+    const processQueue = (error: Error | null, token: string | null = null) => {
+      failedQueue.forEach((prom) => {
+        if (error) {
+          prom.reject(error);
+        } else if (token) {
+          prom.resolve(token);
+        }
+      });
+      failedQueue = [];
+    };
+
+    // 2. Response Interceptor: Error parsing and silent token refresh
     this.axiosInstance.interceptors.response.use(
       (response) => response,
-      (error: AxiosError<{ detail?: string | Array<{ msg: string }>; message?: string }>) => {
+      async (error: AxiosError<{ detail?: string | Array<{ msg: string }>; message?: string }>) => {
+        const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
         const status = error.response?.status;
         const data = error.response?.data;
 
@@ -67,8 +85,82 @@ export class ApiClient {
           errorMessage = error.message;
         }
 
-        // Handle 401 Unauthorized
-        if (status === 401) {
+        // Handle 401 Unauthorized with Refresh Token
+        if (status === 401 && originalRequest && !originalRequest._retry) {
+          const isAuthUrl =
+            originalRequest.url?.includes('/auth/login') ||
+            originalRequest.url?.includes('/auth/refreshToken');
+
+          if (!isAuthUrl) {
+            const refreshToken = storage.getRefreshToken();
+
+            if (refreshToken) {
+              if (isRefreshing) {
+                // Another refresh is in flight, queue this request
+                return new Promise((resolve, reject) => {
+                  failedQueue.push({
+                    resolve: (token: string) => {
+                      if (!originalRequest.headers) {
+                        originalRequest.headers = {};
+                      }
+                      originalRequest.headers['Authorization'] = `Bearer ${token}`;
+                      resolve(this.axiosInstance(originalRequest));
+                    },
+                    reject: (err: Error) => reject(err),
+                  });
+                });
+              }
+
+              originalRequest._retry = true;
+              isRefreshing = true;
+
+              try {
+                // Call refresh endpoint directly using raw axios to bypass interceptor loop
+                const baseURL = import.meta.env.VITE_API_URL || '/api';
+                const refreshResponse = await axios.post<{
+                  access_token: string;
+                  refresh_token?: string;
+                  token_type: string;
+                }>(
+                  `${baseURL}/auth/refreshToken`,
+                  { refresh_token: refreshToken },
+                  { headers: { 'Content-Type': 'application/json' } }
+                );
+
+                const newAccessToken = refreshResponse.data.access_token;
+                const newRefreshToken = refreshResponse.data.refresh_token;
+
+                storage.setToken(newAccessToken);
+                if (newRefreshToken) {
+                  storage.setRefreshToken(newRefreshToken);
+                }
+
+                processQueue(null, newAccessToken);
+
+                if (!originalRequest.headers) {
+                  originalRequest.headers = {};
+                }
+                originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+                return this.axiosInstance(originalRequest);
+              } catch (refreshErr) {
+                processQueue(refreshErr instanceof Error ? refreshErr : new Error('Token refresh failed'), null);
+                storage.clearAuth();
+                if (!window.location.pathname.includes('/login') && !isRedirectingToLogin) {
+                  isRedirectingToLogin = true;
+                  showErrorToast('Session Expired', 'Please log in again to continue.');
+                  setTimeout(() => {
+                    window.location.href = '/login';
+                    isRedirectingToLogin = false;
+                  }, 800);
+                }
+                return Promise.reject(new Error('Session expired. Please log in again.'));
+              } finally {
+                isRefreshing = false;
+              }
+            }
+          }
+
+          // If no refresh token or auth URL failed
           if (!window.location.pathname.includes('/login') && !isRedirectingToLogin) {
             isRedirectingToLogin = true;
             storage.clearAuth();

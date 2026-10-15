@@ -7,7 +7,7 @@ export interface ApiErrorResponse {
   message?: string;
 }
 
-export type ThemeMode = 'light' | 'dark';
+export type ThemeMode = 'light' | 'dark' | 'system';
 
 export interface DashboardMetrics {
   totalTasks: number;

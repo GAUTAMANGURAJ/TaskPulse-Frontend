@@ -21,7 +21,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
       style={{ minHeight }}
     >
       <Spin indicator={antIcon} />
-      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 animate-pulse">
+      <p className="text-sm font-medium text-theme-muted animate-pulse">
         {tip}
       </p>
     </div>
